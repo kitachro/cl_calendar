@@ -1,0 +1,111 @@
+;! 
+#packopt name "cl_calendar"
+#runtime "hsp3cl"
+#include "gh_myconst.hsp"
+#include "gm_cmdline.hsp"
+#include "gm_stdio.hsp"
+
+	// ユーザから指定された年／月を取得
+	month	= int(getarg@(0, TRUE@cmdline))
+	year	= int(getarg@(1, TRUE@cmdline))
+
+	// 値がおかしければ修正（現在の年／月を取得する）
+	if ((month < 1) | (month > 12))		: month	= gettime(GETTIME_MONTH@)
+	if ((year < 1600) | (year > 3999))	: year	= gettime(GETTIME_YEAR@)
+
+	// カレンダーを取得する年／月の1日の曜日を計算（ツェラーの公式）
+	if ((month = 1) | (month = 2)) {
+		month_	= (month + 12)
+		year_	= (year - 1)
+	}
+	else {
+		month_	= month
+		year_	= year
+	}
+	day_of_week	= (year_ + (year_ / 4) - (year_ / 100) + (year_ / 400) + ((13 * month_ + 8) / 5) + 1) \ 7
+
+	// 月の日数を計算
+	if (month = 2) {
+		num_of_days	= 28
+		flag_uruu	= FALSE@
+		if ((year \ 4) = 0) {
+			flag_uruu	= TRUE@
+		}
+		if ((year \ 100) = 0) {
+			flag_uruu	= FALSE@
+		}
+		if ((year \ 400) = 0) {
+			flag_uruu	= TRUE@
+		}
+		if flag_uruu {
+			num_of_days ++
+		}
+	}
+	else {
+		if ((month = 4) | (month = 6) | (month = 9) | (month = 11)) {
+			num_of_days	= 30
+		}
+		else {
+			num_of_days	= 31
+		}
+	}
+
+	// カレンダーに今日が含まれているか調べる
+	included_today	= FALSE@
+	if (year = gettime(GETTIME_YEAR@)) {
+		if (month = gettime(GETTIME_MONTH@)) {
+			included_today	= TRUE@
+		}
+	}
+
+	// カレンダーデータ生成
+	buf	= "" + year + "年 " + month + "月\n_日_月_火_水_木_金_土\n"
+
+	; 冒頭の余白
+	repeat day_of_week
+		buf	+= "___"
+	loop
+
+	; 日付データ
+#define	PREFIX_OF_DAY	"_"
+	num_of_today	= gettime(GETTIME_DAY@)
+	i	= day_of_week
+	repeat num_of_days, 1
+		; 日ごとの余白
+		if included_today {
+			if (cnt = num_of_today) {
+				buf	+= "*"	; 今日のマーク
+			}
+			else {
+				buf	+= PREFIX_OF_DAY
+			}
+		}
+		else {
+			buf	+= PREFIX_OF_DAY
+		}
+		if (cnt < 10)	{
+			buf	+= PREFIX_OF_DAY
+		}
+
+		buf	+= "" + cnt
+		if (i = 6) {
+			i	= 0
+			buf	+= "\n"
+		}
+		else {
+			i ++
+		}
+	loop
+
+	; 末尾が改行コードでなければ改行コードを追加
+	word	= 0
+	char	= ""
+	word	= wpeek(buf, (strlen(buf) - 2))
+	wpoke char, 0, word
+	if (char != "\n") {
+		buf	+= "\n"
+	}
+
+	// 出力
+	mes2@ buf
+	end
