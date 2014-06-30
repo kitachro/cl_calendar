@@ -1,13 +1,13 @@
-cl_calender
+cl_calendar
 ===========
 
 テキスト形式のカレンダーを表示するWindows用コンソールアプリケーション  
-A CLI command for MS Windows 7 to show calender in a text format.
+A CLI command for MS Windows 7 to show calendar in a text format.
 
 Usage
 -----
 
-cl_calender.exe [month] [year]
+cl_calendar.exe [month] [year]
 
 Note
 ----
