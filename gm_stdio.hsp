@@ -1,0 +1,164 @@
+/***********************************************************
+
+	標準入出力関連モジュール（hsp3cl用）
+
+		【2006/11/20 更新】
+
+	命令・関数一覧
+
+	#defcfunc is_stdin_redirected
+		機能：		標準入力がリダイレクトされているかチェック
+		戻り値：	1(Yes) or 0(No)
+		用途：		標準入力からデータを受け取る際のinput命令
+					のp3を決める基準にする。戻り値が1であれば
+					キーボード以外にリダイレクトされている。
+					（input ?,?,0 要実行の可能性あり）
+
+	#defcfunc is_stdout_redirected
+		機能：		標準出力がリダイレクトされているかチェック
+		戻り値：	1(Yes) or 0(No)
+
+	#deffunc input2 var p1
+		機能：		標準入力からサイズの制限なくデータを取得する
+		用途：		標準のinputだとデータサイズが大きいときに
+					システムエラーで強制終了することがあるので
+					input ?,?,0 の代わりに使う。
+
+	#deffunc mes2 var p1
+		機能：		指定された文字列を改行コードを付加せずに
+					標準出力に出力
+		用途：		出力時に末尾に改行コードが付加されるmes
+					命令では不都合な時に使う。
+					p1に含まれる改行コードがCRLF(0x0d 0x0a)の
+					場合のみ有効。
+
+	#defcfunc get_hstdin
+		機能：		標準入力ハンドルを取得
+		戻り値：	ハンドル（整数）
+
+	#defcfunc get_hstdout
+		機能：		標準出力ハンドルを取得
+		戻り値：	ハンドル（整数）
+
+	#defcfunc get_hstderr
+		機能：		標準エラーハンドルを取得
+		戻り値：	ハンドル（整数）
+
+***********************************************************/
+#ifndef	__GM_STDIO__
+#define	global	__GM_STDIO__
+
+
+#include "kernel32.as"
+
+#module gm_stdio
+
+#const	TRUE	1
+#const	FALSE	0
+
+;#uselib	"kernel32.dll"
+;#func	GetStdHandle "GetStdHandle" sptr
+#const	STD_INPUT_HANDLE	-10
+#const	STD_OUTPUT_HANDLE	-11
+#const	STD_ERROR_HANDLE	-12
+
+#uselib	"msvcrt.dll"
+#cfunc	isatty	"_isatty" int
+#func	putchar	"putchar" int
+#cfunc	getchar	"getchar"
+#const	EOF		-1
+
+/**********************************************************/
+// 標準入力がリダイレクトされているかチェック
+/**********************************************************/
+#defcfunc is_stdin_redirected
+	if isatty(0) {
+		return FALSE
+	}
+	return TRUE
+
+/**********************************************************/
+// 標準出力がリダイレクトされているかチェック
+/**********************************************************/
+#defcfunc is_stdout_redirected
+	if isatty(1) {
+		return FALSE
+	}
+	return TRUE
+
+/**********************************************************/
+// 標準入力からサイズの制限なくデータを取得する
+/**********************************************************/
+#deffunc input2 var p1
+	p1 = ""
+	char = " "				// 2バイト目を確実に0にする
+	repeat
+		byte = getchar()
+		if (byte=EOF)|(byte=0) {
+dialog byte
+			break
+		}
+		else {
+			poke char,0,byte
+			p1 += char
+		}
+;dialog p1
+	loop
+;dialog "ok"
+;notesel p1
+;notesave "data.txt"
+	return
+
+/**********************************************************/
+// 指定された文字列を改行コードを付加せずに標準出力に出力
+/**********************************************************/
+#deffunc mes2 var p1
+	if strmid(p1,strlen(p1)-2,2)="\n" {	// 文字列の末尾が改行コード(CRLF)
+		flag = TRUE
+	}
+	else {
+		flag = FALSE
+	}
+	notesel p1
+	num = notemax
+
+	repeat num
+		noteget linestr,cnt
+		if cnt=(num-1) {					// 最後の行
+			if flag=FALSE {					// 文字列の末尾が改行コード(CRLF)でない
+				repeat strlen(linestr)
+					putchar peek(linestr,cnt)
+				loop
+				break
+			}
+		}
+		mes linestr
+	loop
+	return
+
+/**********************************************************/
+// 標準入力ハンドルを取得
+/**********************************************************/
+#defcfunc get_hstdin
+	GetStdHandle STD_INPUT_HANDLE
+	return stat
+
+/**********************************************************/
+// 標準出力ハンドルを取得
+/**********************************************************/
+#defcfunc get_hstdout
+	GetStdHandle STD_OUTPUT_HANDLE
+	return stat
+
+/**********************************************************/
+// 標準エラーハンドルを取得
+/**********************************************************/
+#defcfunc get_hstderr
+	GetStdHandle STD_ERROR_HANDLE
+	return stat
+
+/**********************************************************/
+#global
+
+
+#endif

@@ -1,0 +1,172 @@
+#ifndef	__GM_CMDLINE__
+#define	global	__GM_CMDLINE__
+
+	#include "gm_split_str.hsp"
+	#include "gm_del_quot.hsp"
+
+#module cmdline
+
+	#const	TRUE	1
+	#const	FALSE	0;-1
+
+	#define	CMDLINE_DELIMITER	" "
+	#define	DQUOT_CHAR			"\""
+	#define	SLASH_CODE			'/'
+	#define	HYPHEN_CODE			'-'
+
+/**********************************************************/
+// コマンドライン解析
+// （ファイル末尾で呼び出し済み）
+/**********************************************************/
+#deffunc scan_cmdline str cmdline_
+
+	_argc		= 0
+	_args		= ""
+	_optchars	= ""
+
+	/* 項目を切り分け */
+	sdim	items, 2, 2
+	prms	= cmdline_, CMDLINE_DELIMITER, DQUOT_CHAR
+	split_str	prms, items
+
+	/* 引数とオプション文字列を選別 */
+	repeat	length(items)
+		code	= peek(items(cnt), 0)
+		if ( (code = SLASH_CODE) | (code = HYPHEN_CODE) ) {
+			getstr		tmpstr, items(cnt), 1	// オプション指定文字列を取得
+			_optchars	+= tmpstr
+		}
+		else {
+			_args(_argc)	= items(cnt)		//  引数を取得
+			_argc	++
+		}
+	loop
+	return
+
+/**********************************************************/
+// 任意のオプションが指定されているかチェック
+/**********************************************************/
+#defcfunc chkopt str optchar_
+
+	if (instr(_optchars, 0, optchar_) > -1) {
+		return TRUE
+	}
+	return FALSE
+
+/**********************************************************/
+// 指定したインデックスの引数を取得
+/**********************************************************/
+#defcfunc getarg int argi_, int delquot_flag_
+
+	if ((argi_ < _argc) & (argi_ >= 0)) {		// インデックスが不正でない
+		arg		= _args(argi_)
+;		if delquot_flag_ {
+;			arg		= del_quot(arg, DQUOT_CHAR)
+;		}
+		if delquot_flag_ {
+			arg		= del_quot(arg, DQUOT_CHAR)
+		}
+		return arg
+	}
+	return ""
+
+#global
+
+	scan_cmdline	dir_cmdline
+
+#endif
+
+/*
+%dll
+gm_cmdline.hsp
+%author
+chrono
+%date
+2010/02/15
+%port
+Win
+%note
+コマンドライン引数解析・取得モジュール
+インクルードしているファイル	: gm_split_str.hsp, gm_del_quot.hsp
+
+;------------------------------------
+%index
+getarg
+特定のインデックスのコマンドライン引数を取得
+
+%prm
+(p1, p2)
+p1=0～	: 取得したい引数のインデックス（オプション文字列を除く）
+p2=0 or 1(1)	: 引数が二重引用符に囲まれていた場合にそれを削除するかどうか。1=yes / 0=no
+
+%inst
+起動したプログラムに渡されたコマンドラインから任意の位置の引数を取得することができます。位置を数える時に、"/"で始まりかつ二重引用符に挟まれていない文字列は引数として数えません。
+
+p2を省略した場合は1を指定したものとみなされます。
+
+ちなみにコマンドラインの解析は自動で行われるため、明示的に実行する必要はありません。
+
+%sample
+#include "gm_cmdline.hsp"
+
+	mes getarg(0, 0)	; 1番目の引数を二重引用符を削除せずに取得
+
+%href
+chkopt
+
+;------------------------------------
+%index
+chkopt
+コマンドラインに特定のオプション文字列が含まれているかチェック
+
+%prm
+(p1)
+p1="?"	: チェック対象のオプション文字（1バイトのみ）、またはそれを格納した変数
+
+%inst
+起動したプログラムに渡されたコマンドラインに、指定した文字のオプション文字列が含まれているかどうかをチェックします。含まれている場合は1が、含まれていない場合には0が返ります。
+
+この関数を含むモジュールがオプション文字列とみなすのは、"/"または"-"で始まりかつ二重引用符に挟まれていない文字列のみです。ロングオプション（2文字以上の単語で指定するオプション）やオプションに対する引数には対応していません。
+
+ちなみにコマンドラインの解析は自動で行われるため、明示的に実行する必要はありません。
+
+%sample
+#include "gm_cmdline.hsp"
+
+	if chkopt("a") {
+		mes "/aオプションが指定されています。"
+	}
+	else {
+		mes "/aオプションは指定されていません。"
+	}
+
+%href
+getarg
+
+;------------------------------------
+%index
+TRUE@cmdline
+cmdlineモジュール関数戻り値:真
+
+%inst
+値:1
+
+%href
+FALSE@cmdline
+getarg
+chkopt
+
+;------------------------------------
+%index
+FALSE@cmdline
+cmdlineモジュール関数戻り値:偽
+
+%inst
+値:0
+
+%href
+TRUE@cmdline
+getarg
+chkopt
+
+%*/
